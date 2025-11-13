@@ -1,16 +1,15 @@
 # app/models.py
-
 from datetime import datetime
-from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger,
     Column,
+    Integer,
+    BigInteger,
+    String,
+    Float,
+    Boolean,
     DateTime,
     ForeignKey,
-    Integer,
-    Numeric,
-    String,
 )
 from sqlalchemy.orm import relationship
 
@@ -18,52 +17,54 @@ from .db import Base
 
 
 class User(Base):
-    """
-    משתמש טלגרם במערכת.
-    כל משתמש יכול להחזיק מספר ארנקים (למרות שבפועל אנחנו משתמשים כרגע באחד).
-    """
-
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    # חשוב: BigInteger כדי לתמוך ב-Telegram ID גדול (כמו 7757102350)
+    # מזהה טלגרם – יכול להיות מאוד גדול, לכן BigInteger
     telegram_id = Column(BigInteger, unique=True, index=True, nullable=False)
     username = Column(String(255), nullable=True)
     first_name = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    # יחסים
-    wallets = relationship("Wallet", back_populates="user", cascade="all, delete-orphan")
-    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
-
-    def __repr__(self) -> str:
-        return f"<User id={self.id} tg={self.telegram_id} username={self.username!r}>"
+    # קשרים
+    wallets = relationship(
+        "Wallet",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    orders = relationship(
+        "Order",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    sent_transfers = relationship(
+        "Transfer",
+        foreign_keys="Transfer.from_user_id",
+        back_populates="from_user",
+        cascade="all, delete-orphan",
+    )
+    received_transfers = relationship(
+        "Transfer",
+        foreign_keys="Transfer.to_user_id",
+        back_populates="to_user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Wallet(Base):
-    """
-    ארנק לוגי של משתמש (דמו / off-chain).
-    מאפשר החזקת יתרת SLH ועקיבת העברות בטבלה Transfer.
-    """
-
     __tablename__ = "wallets"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
-    # כתובת לוגית (למשל: SLH-<telegram_id>-SLH)
+    # כתובת לוגית של ארנק SLH (למשל: SLH-<telegram_id>-SLH)
     address = Column(String(255), unique=True, index=True, nullable=False)
 
-    # יתרה מדויקת – Numeric כדי לשמור כמויות קריפטו בצורה בטוחה
-    balance = Column(Numeric(precision=30, scale=8), default=Decimal("0"), nullable=False)
+    # איזה טוקן מחזיק הארנק – כרגע SLH, בעתיד אפשר BTC/TON וכו'
+    token_symbol = Column(String(32), nullable=False, default="SLH")
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False,
-    )
+    # יתרה דמו (float פשוט)
+    balance = Column(Float, nullable=False, default=0.0)
 
     user = relationship("User", back_populates="wallets")
 
@@ -71,43 +72,52 @@ class Wallet(Base):
         "Transfer",
         foreign_keys="Transfer.from_wallet_id",
         back_populates="from_wallet",
+        cascade="all, delete-orphan",
     )
     incoming_transfers = relationship(
         "Transfer",
         foreign_keys="Transfer.to_wallet_id",
         back_populates="to_wallet",
+        cascade="all, delete-orphan",
     )
 
-    def __repr__(self) -> str:
-        return f"<Wallet id={self.id} addr={self.address} balance={self.balance}>"
+    orders = relationship(
+        "Order",
+        back_populates="wallet",
+        cascade="all, delete-orphan",
+    )
 
 
 class Transfer(Base):
     """
-    תיעוד העברות SLH בין ארנקים:
-    - faucet
-    - deposit (דמו)
-    - send בין משתמשים
-    - future: תשלום עבור פקודות / matching וכו'
+    תיעוד העברות בין ארנקים/משתמשים בתוך מערכת ה-demo.
     """
 
     __tablename__ = "transfers"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # faucet יכול להיות בלי from_wallet_id (None)
-    from_wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    from_wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
     to_wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
 
-    amount = Column(Numeric(precision=30, scale=8), nullable=False)
+    token_symbol = Column(String(32), nullable=False, default="SLH")
+    amount = Column(Float, nullable=False)
 
-    # סוג ההעברה: faucet / deposit / send / order_fill / וכו'
-    transfer_type = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    # מזהה חיצוני עתידי (tx hash on-chain, reference וכו')
-    tx_ref = Column(String(255), nullable=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    from_user = relationship(
+        "User",
+        foreign_keys=[from_user_id],
+        back_populates="sent_transfers",
+    )
+    to_user = relationship(
+        "User",
+        foreign_keys=[to_user_id],
+        back_populates="received_transfers",
+    )
 
     from_wallet = relationship(
         "Wallet",
@@ -120,50 +130,27 @@ class Transfer(Base):
         back_populates="incoming_transfers",
     )
 
-    def __repr__(self) -> str:
-        return (
-            f"<Transfer id={self.id} "
-            f"from={self.from_wallet_id} to={self.to_wallet_id} "
-            f"amount={self.amount} type={self.transfer_type}>"
-        )
-
 
 class Order(Base):
     """
-    פקודת קנייה/מכירה בסיסית (demo orderbook).
-    כרגע לוגיקה פשוטה – אתה יכול להרחיב בהמשך למערכת מסחר מלאה.
+    הזמנה דמו (buy/sell) על טוקן SLH
     """
 
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False, index=True)
 
+    token_symbol = Column(String(32), nullable=False, default="SLH")
     side = Column(String(4), nullable=False)  # "buy" / "sell"
-    token = Column(String(50), nullable=False, default="SLH")
+    amount = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
 
-    amount = Column(Numeric(precision=30, scale=8), nullable=False)
-    price = Column(Numeric(precision=30, scale=8), nullable=False)
+    # זה השדה שה-service משתמש בו: models.Order.is_open.is_(True)
+    is_open = Column(Boolean, nullable=False, default=True)
 
-    status = Column(
-        String(20),
-        nullable=False,
-        default="open",  # open / filled / cancelled
-    )
-
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False,
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="orders")
-
-    def __repr__(self) -> str:
-        return (
-            f"<Order id={self.id} user={self.user_id} "
-            f"{self.side.upper()} {self.amount} {self.token} @ {self.price} "
-            f"status={self.status}>"
-        )
+    wallet = relationship("Wallet", back_populates="orders")
