@@ -28,11 +28,15 @@ async def on_startup() -> None:
     אירוע אתחול של FastAPI – כאן אנחנו מאתחלים ומפעילים את Application של טלגרם.
     """
     logger.info("Initializing Telegram Application on startup...")
-    # אם כבר מאותחל/רץ – לא ניפול, פשוט נדלג
+
+    # אם הבוט עדיין לא מאותחל – נאתחל
     if not getattr(telegram_app, "_initialized", False):
         await telegram_app.initialize()
+
+    # אם הבוט לא רץ – נפעיל
     if not getattr(telegram_app, "running", False):
         await telegram_app.start()
+
     logger.info("Telegram Application initialized and started.")
 
 
@@ -70,10 +74,10 @@ async def telegram_webhook(request: Request):
     """
     נקודת webhook שמקבלת עדכונים מטלגרם ומעבירה אותם ל-Application.
 
-    כדי להבטיח יציבות מוחלטת, גם אם משום מה אירוע ה-startup לא רץ / הבוט עושה reload,
-    אנחנו דואגים לוודא כאן שה-Application מאותחל ורץ לפני process_update.
+    אם משום מה אירוע ה-startup לא רץ (או שהשרת עשה reload),
+    אנחנו דואגים כאן לוודא שהבוט מאותחל ורץ לפני process_update.
     """
-    # דאבל-סייפטי: לוודא initialize + start גם אם מסיבה כלשהי זה לא קרה ב-startup
+    # דאבל-סייפטי: initialize + start אם צריך
     if not getattr(telegram_app, "_initialized", False):
         logger.warning("Telegram Application not initialized – initializing lazily in webhook...")
         await telegram_app.initialize()
