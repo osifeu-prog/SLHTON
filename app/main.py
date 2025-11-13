@@ -12,14 +12,33 @@ from .telegram import get_application
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# יצירת טבלאות אם לא קיימות
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SLHTON API", version="1.0.0")
 
+telegram_app = get_application()
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    logger.info("Initializing Telegram Application...")
+    await telegram_app.initialize()
+    await telegram_app.start()
+    logger.info("Telegram Application initialized and started.")
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    logger.info("Shutting down Telegram Application...")
+    await telegram_app.stop()
+    await telegram_app.shutdown()
+    logger.info("Telegram Application stopped and shutdown.")
+
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"status": "ok"}
+
 
 @app.get("/meta")
 async def meta() -> Dict[str, Any]:
@@ -29,11 +48,10 @@ async def meta() -> Dict[str, Any]:
         "admin_owner_ids": settings.admin_owner_ids,
     }
 
+
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
-    """נקודת webhook שמקבלת עדכונים מטלגרם ומעבירה אותם ל-Application."""
-    app_bot = get_application()
     data = await request.json()
-    update = Update.de_json(data, app_bot.bot)
-    await app_bot.process_update(update)
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
     return JSONResponse({"ok": True})

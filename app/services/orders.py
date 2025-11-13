@@ -1,6 +1,9 @@
 from typing import List
+
 from sqlalchemy.orm import Session
+
 from .. import models
+
 
 def create_order(
     db: Session,
@@ -26,6 +29,7 @@ def create_order(
     db.commit()
     db.refresh(order)
     return order
+
 
 def list_open_orders(db: Session) -> List[models.Order]:
     return (

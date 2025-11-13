@@ -1,17 +1,25 @@
 from sqlalchemy.orm import Session
+
 from .. import models
 from ..config import settings
 
-def get_or_create_wallet(db: Session, user: models.User, token_symbol: str = "SLH") -> models.Wallet:
+
+def get_or_create_wallet(
+    db: Session,
+    user: models.User,
+    token_symbol: str = "SLH",
+) -> models.Wallet:
     wallet = (
         db.query(models.Wallet)
-        .filter(models.Wallet.user_id == user.id, models.Wallet.token_symbol == token_symbol)
+        .filter(
+            models.Wallet.user_id == user.id,
+            models.Wallet.token_symbol == token_symbol,
+        )
         .first()
     )
     if wallet:
         return wallet
 
-    # יצירת "כתובת" דמו מבוססת ID
     address = f"SLH-{user.telegram_id}-{token_symbol}"
     wallet = models.Wallet(
         user_id=user.id,
@@ -24,7 +32,13 @@ def get_or_create_wallet(db: Session, user: models.User, token_symbol: str = "SL
     db.refresh(wallet)
     return wallet
 
-def deposit(db: Session, wallet: models.Wallet, amount: float, token_symbol: str = "SLH") -> models.Wallet:
+
+def deposit(
+    db: Session,
+    wallet: models.Wallet,
+    amount: float,
+    token_symbol: str = "SLH",
+) -> models.Wallet:
     wallet.balance += amount
     tx = models.Tx(
         wallet_id=wallet.id,
@@ -36,6 +50,7 @@ def deposit(db: Session, wallet: models.Wallet, amount: float, token_symbol: str
     db.commit()
     db.refresh(wallet)
     return wallet
+
 
 def faucet(db: Session, wallet: models.Wallet) -> models.Wallet:
     amount = float(settings.faucet_amount)

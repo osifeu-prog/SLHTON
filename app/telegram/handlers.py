@@ -8,8 +8,10 @@ from ..services import wallet as wallet_service
 from ..services import orders as orders_service
 from ..config import settings
 
+
 def _get_db() -> Session:
     return SessionLocal()
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = _get_db()
@@ -36,6 +38,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = _get_db()
     try:
@@ -56,6 +59,7 @@ async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = _get_db()
     try:
@@ -75,10 +79,12 @@ async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
         await update.effective_message.reply_text("שימוש: /deposit <amount>")
         return
+
     try:
         amount = float(context.args[0])
     except ValueError:
@@ -101,6 +107,7 @@ async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def faucet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = _get_db()
     try:
@@ -118,10 +125,14 @@ async def faucet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) < 4:
-        await update.effective_message.reply_text("שימוש: /order <buy|sell> <token> <amount> <price>")
+        await update.effective_message.reply_text(
+            "שימוש: /order <buy|sell> <token> <amount> <price>"
+        )
         return
+
     side = context.args[0]
     token = context.args[1]
     try:
@@ -165,6 +176,7 @@ async def order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     finally:
         db.close()
 
+
 async def orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = _get_db()
     try:
@@ -174,16 +186,20 @@ async def orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         lines = ["הזמנות פתוחות:"]
         for o in open_orders[:20]:
-            lines.append(f"#{o.id} {o.side.upper()} {o.amount} {o.token_symbol} @ {o.price}")
+            lines.append(
+                f"#{o.id} {o.side.upper()} {o.amount} {o.token_symbol} @ {o.price}"
+            )
         await update.effective_message.reply_text("\n".join(lines))
     finally:
         db.close()
+
 
 async def adminpanel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_user = update.effective_user
     if tg_user.id not in settings.admin_owner_ids:
         await update.effective_message.reply_text("אין לך הרשאת אדמין.")
         return
+
     text = (
         "Admin Panel\n"
         "- /orders - צפייה בהזמנות\n"

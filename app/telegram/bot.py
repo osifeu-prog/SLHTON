@@ -3,7 +3,8 @@ from telegram.ext import Application, CommandHandler
 from ..config import settings
 from . import handlers
 
-_application = None
+_application: Application | None = None
+
 
 def get_application() -> Application:
     global _application
@@ -15,7 +16,6 @@ def get_application() -> Application:
 
     app = Application.builder().token(settings.bot_token).build()
 
-    # Handlers
     app.add_handler(CommandHandler("start", handlers.start))
     app.add_handler(CommandHandler("whoami", handlers.whoami))
     app.add_handler(CommandHandler("wallet", handlers.wallet))

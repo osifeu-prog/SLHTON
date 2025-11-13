@@ -1,5 +1,6 @@
 import logging
 import sys
+
 import httpx
 import uvicorn
 
@@ -7,6 +8,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
 
 def set_webhook() -> None:
     if not settings.bot_token:
@@ -24,13 +26,20 @@ def set_webhook() -> None:
     logger.info("🌐 Webhook URL: %s", webhook_url)
 
     with httpx.Client(timeout=30.0) as client:
-        resp = client.post(api_url, json={"url": webhook_url, "allowed_updates": ["message", "callback_query"]})
+        resp = client.post(
+            api_url,
+            json={
+                "url": webhook_url,
+                "allowed_updates": ["message", "callback_query"],
+            },
+        )
         data = resp.json()
         logger.info("📡 Webhook response: %s", data)
         if not data.get("ok"):
             logger.error("Failed to set webhook: %s", data)
             sys.exit(1)
         logger.info("✅ Webhook set successfully!")
+
 
 if __name__ == "__main__":
     set_webhook()

@@ -1,8 +1,10 @@
 from datetime import datetime
+
 from sqlalchemy import Integer, String, DateTime, Float, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from .db import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -14,6 +16,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     wallets: Mapped[list["Wallet"]] = relationship("Wallet", back_populates="owner")
+
 
 class Wallet(Base):
     __tablename__ = "wallets"
@@ -27,12 +30,13 @@ class Wallet(Base):
 
     owner: Mapped[User] = relationship("User", back_populates="wallets")
 
+
 class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
-    side: Mapped[str] = mapped_column(String)  # "buy" or "sell"
+    side: Mapped[str] = mapped_column(String)
     token_symbol: Mapped[str] = mapped_column(String, default="SLH")
     amount: Mapped[float] = mapped_column(Float)
     price: Mapped[float] = mapped_column(Float)
@@ -41,12 +45,13 @@ class Order(Base):
 
     user: Mapped[User] = relationship("User")
 
+
 class Tx(Base):
     __tablename__ = "txs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     wallet_id: Mapped[int] = mapped_column(Integer, ForeignKey("wallets.id"))
-    tx_type: Mapped[str] = mapped_column(String)  # "deposit", "withdraw", "trade"
+    tx_type: Mapped[str] = mapped_column(String)
     amount: Mapped[float] = mapped_column(Float)
     token_symbol: Mapped[str] = mapped_column(String, default="SLH")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
