@@ -8,6 +8,7 @@ _application: Application | None = None
 
 def get_application() -> Application:
     global _application
+
     if _application is not None:
         return _application
 
@@ -16,6 +17,7 @@ def get_application() -> Application:
 
     app = Application.builder().token(settings.bot_token).build()
 
+    # פקודות משתמש
     app.add_handler(CommandHandler("start", handlers.start))
     app.add_handler(CommandHandler("whoami", handlers.whoami))
     app.add_handler(CommandHandler("wallet", handlers.wallet))
@@ -23,6 +25,11 @@ def get_application() -> Application:
     app.add_handler(CommandHandler("faucet", handlers.faucet))
     app.add_handler(CommandHandler("order", handlers.order))
     app.add_handler(CommandHandler("orders", handlers.orders))
+
+    # פקודת שליחה בין משתמשים
+    app.add_handler(CommandHandler("send", handlers.send))
+
+    # פאנל אדמין
     app.add_handler(CommandHandler("adminpanel", handlers.adminpanel))
 
     _application = app
