@@ -8,6 +8,7 @@ from telegram import Update
 
 from .config import settings
 from .db import Base, engine
+from .db import SessionLocal, init_db
 from .telegram import get_application
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,9 @@ def _set_telegram_webhook() -> None:
 
 
 @app.on_event("startup")
-async def on_startup() -> None:
+async def on_startup():
+    # 1) קודם כל: ליצור טבלאות בדאטאבייס
+    init_db()
     """
     אירוע אתחול של FastAPI – כאן אנחנו:
     1. מאתחלים ומפעילים את Application של טלגרם.
